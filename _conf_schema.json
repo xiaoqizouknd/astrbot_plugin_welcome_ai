@@ -1,0 +1,158 @@
+{
+  "ai_backend": {
+    "description": "AI 接入方式",
+    "type": "string",
+    "default": "direct_api",
+    "options": ["direct_api", "astrbot_provider"],
+    "labels": [
+      "直连 API（推荐，填下面的 base_url / api_key / model）",
+      "使用 AstrBot 已载入的 provider"
+    ]
+  },
+  "api_base_url": {
+    "description": "API 地址（OpenAI 兼容格式）",
+    "type": "string",
+    "default": "https://api.deepseek.com/v1"
+  },
+  "api_key": {
+    "description": "API 密钥",
+    "type": "string",
+    "default": ""
+  },
+  "api_model": {
+    "description": "模型名称",
+    "type": "string",
+    "default": "deepseek-chat"
+  },
+  "api_temperature": {
+    "description": "模型温度",
+    "type": "float",
+    "default": 0.8,
+    "slider": { "min": 0.0, "max": 2.0, "step": 0.1 }
+  },
+  "api_timeout": {
+    "description": "API 超时时间（秒）",
+    "type": "int",
+    "default": 30,
+    "slider": { "min": 5, "max": 120, "step": 5 }
+  },
+  "preferred_provider_id": {
+    "description": "AstrBot provider ID（仅当 ai_backend 选 astrbot_provider 时有效）",
+    "type": "string",
+    "default": ""
+  },
+  "enable_welcome": {
+    "description": "启用自动欢迎新成员",
+    "type": "bool",
+    "default": true
+  },
+  "welcome_prompt_template": {
+    "description": "欢迎语的生成提示模板",
+    "type": "string",
+    "default": "有新人「{member_name}」加入了群聊，请写一句简短、自然、符合你当前人格的欢迎语，不要复述要求。"
+  },
+  "welcome_extra": {
+    "description": "额外补充要求（可选）",
+    "type": "string",
+    "default": ""
+  },
+  "welcome_system_prompt": {
+    "description": "AI 系统提示词（人格设定）",
+    "type": "string",
+    "default": "你是一个友善、活泼的群聊机器人，说话自然、简短，喜欢用轻松的语气。"
+  },
+  "enable_ai_polish": {
+    "description": "欢迎语是否用 AI 生成",
+    "type": "bool",
+    "default": true
+  },
+  "wake_words": {
+    "type": "template_list",
+    "description": "唤醒词列表（点“添加”新增一条）",
+    "default": [],
+    "hint": "每条最多填三栏：关键词、回复文案、AI 要求。\n\n插件会把「该关键词最近 N 秒内被触发的次数」告诉 AI。",
+    "templates": {
+      "wake_word": {
+        "name": "唤醒词",
+        "items": {
+          "keyword": { "type": "string", "description": "关键词（必填）" },
+          "reply": { "type": "string", "description": "回复文案（可留空）" },
+          "prompt": { "type": "string", "description": "AI 要求（可选）" }
+        }
+      }
+    }
+  },
+  "wake_use_ai": {
+    "description": "唤醒词回复是否用 AI 微调",
+    "type": "bool",
+    "default": true
+  },
+  "wake_only_group": {
+    "description": "唤醒词只在群聊生效",
+    "type": "bool",
+    "default": false
+  },
+  "chat_mode": {
+    "description": "机器人聊天模式",
+    "type": "string",
+    "default": "wake_word_only",
+    "options": ["wake_word_only", "always_reply"],
+    "labels": [
+      "只响应唤醒词（默认）",
+      "任何消息都回复（不要求唤醒词）"
+    ]
+  },
+  "admin_whitelist": {
+    "description": "管理员白名单（用于“欢迎”命令）",
+    "type": "string",
+    "default": ""
+  },
+  "cooldown_seconds": {
+    "description": "唤醒词冷却时间（秒）",
+    "type": "int",
+    "default": 3,
+    "slider": { "min": 0, "max": 60, "step": 1 }
+  },
+  "freq_window_seconds": {
+    "description": "频率统计窗口（秒）",
+    "type": "int",
+    "default": 60,
+    "slider": { "min": 10, "max": 600, "step": 10 }
+  },
+  "enable_idle_chat": {
+    "description": "启用主动发言",
+    "type": "bool",
+    "default": false,
+    "hint": "开启后，如果机器人自己很久没在某个会话里说过话，它会主动冒个泡。\n注意：只对机器人“见过”的会话生效（也就是收到过消息的会话）。"
+  },
+  "idle_seconds": {
+    "description": "机器人沉默多久后主动发言（秒）",
+    "type": "int",
+    "default": 1800,
+    "slider": { "min": 60, "max": 7200, "step": 60 },
+    "hint": "默认 1800 秒 = 30 分钟。\n只要机器人自己在这段时间内没发过言，就会主动说一句。哪怕群里很热闹也一样。"
+  },
+  "idle_check_interval": {
+    "description": "检查间隔（秒）",
+    "type": "int",
+    "default": 60,
+    "slider": { "min": 10, "max": 600, "step": 10 }
+  },
+  "idle_cooldown_seconds": {
+    "description": "两次主动发言最短间隔（秒）",
+    "type": "int",
+    "default": 3600,
+    "slider": { "min": 300, "max": 86400, "step": 300 },
+    "hint": "默认 3600 秒 = 1 小时。"
+  },
+  "idle_prompt": {
+    "description": "主动发言的提示词",
+    "type": "string",
+    "default": "你已经很久没在这个群里说话了。现在主动说一句轻松的话，像老朋友一样随便聊一句。简短自然，符合你的性格。不要复述规则，只输出要说的话。"
+  },
+  "idle_only_group": {
+    "description": "只在群聊主动发言（私聊不主动）",
+    "type": "bool",
+    "default": true
+  }
+}

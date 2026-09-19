@@ -1,0 +1,8 @@
+name: astrbot_plugin_welcome_ai
+display_name: 欢迎与唤醒词AI
+desc: 自动生成贴合人格的欢迎新成员文案；支持自定义唤醒词，回复由 AI 微调。
+short_desc: 新人欢迎 + 唤醒词 AI 微调。
+version: 1.0.0
+astrbot_version: ">=4.26,<5"
+author: 57Darling02
+repo: https://github.com/57Darling02/astrbot_plugin_welcome_ai

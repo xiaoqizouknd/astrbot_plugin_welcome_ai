@@ -28,7 +28,8 @@
     "description": "模型温度",
     "type": "float",
     "default": 0.8,
-    "slider": { "min": 0.0, "max": 2.0, "step": 0.1 }
+    "slider": { "min": 0.0, "max": 2.0, "step": 0.1 },
+    "hint": "0 表示确定性输出（同样输入尽量同样输出）。\n值越大越随机，推荐 0.6 ~ 1.0。"
   },
   "api_timeout": {
     "description": "API 超时时间（秒）",
@@ -36,10 +37,18 @@
     "default": 30,
     "slider": { "min": 5, "max": 120, "step": 5 }
   },
+  "max_reply_length": {
+    "description": "AI 输出最大长度（字符数）",
+    "type": "int",
+    "default": 120,
+    "slider": { "min": 0, "max": 2000, "step": 10 },
+    "hint": "限制 AI 每次输出的字数，避免刷屏。\n默认 120 字，适合群聊。\n0 表示不限制。\n\n生效范围：欢迎语、唤醒词回复、主动发言、AI 微调，全都受限。\n插件会在提示里告诉 AI 不超过这个长度；如果 AI 还是超了，会直接截断并加省略号。"
+  },
   "preferred_provider_id": {
     "description": "AstrBot provider ID（仅当 ai_backend 选 astrbot_provider 时有效）",
     "type": "string",
-    "default": ""
+    "default": "",
+    "hint": "留空时按当前会话默认 provider 走。\n可以在插件“订阅状态”或 AstrBot 日志里查看可用 provider id。"
   },
   "enable_welcome": {
     "description": "启用自动欢迎新成员",
@@ -49,12 +58,14 @@
   "welcome_prompt_template": {
     "description": "欢迎语的生成提示模板",
     "type": "string",
-    "default": "有新人「{member_name}」加入了群聊，请写一句简短、自然、符合你当前人格的欢迎语，不要复述要求。"
+    "default": "有新人「{member_name}」加入了群聊，请写一句简短、自然、符合你当前人格的欢迎语，不要复述要求。",
+    "hint": "可用 {member_name} 作为占位符，会被替换成新成员昵称。"
   },
   "welcome_extra": {
     "description": "额外补充要求（可选）",
     "type": "string",
-    "default": ""
+    "default": "",
+    "hint": "会拼接到欢迎语提示的末尾，用来追加风格或限制要求。\n例如：不要使用感叹号、不要提到“新人”。\n留空表示不追加。"
   },
   "welcome_system_prompt": {
     "description": "AI 系统提示词（人格设定）",
@@ -66,18 +77,38 @@
     "type": "bool",
     "default": true
   },
+  "welcome_merge_seconds": {
+    "description": "新人入群合并窗口（秒）",
+    "type": "int",
+    "default": 3,
+    "slider": { "min": 0, "max": 30, "step": 1 },
+    "hint": "短时间内连续入群的新人会合并成一条欢迎语（如“欢迎 A、B 加入！”），既自然又省 API。\n0 表示不合并，有人加入立即欢迎。"
+  },
   "wake_words": {
     "type": "template_list",
     "description": "唤醒词列表（点“添加”新增一条）",
     "default": [],
-    "hint": "每条最多填三栏：关键词、回复文案、AI 要求。\n\n插件会把「该关键词最近 N 秒内被触发的次数」告诉 AI。",
+    "hint": "每条最多填四栏：\n- 关键词（必填，英文不区分大小写，长词优先匹配）\n- 回复文案（可选）\n- AI 要求（可选）\n- 回复概率（整数按百分比理解，1 表示 1%；小数 0~1 按比例，0.8 = 80%；也支持 80% 写法）",
     "templates": {
       "wake_word": {
         "name": "唤醒词",
         "items": {
-          "keyword": { "type": "string", "description": "关键词（必填）" },
-          "reply": { "type": "string", "description": "回复文案（可留空）" },
-          "prompt": { "type": "string", "description": "AI 要求（可选）" }
+          "keyword": {
+            "type": "string",
+            "description": "关键词（必填）"
+          },
+          "reply": {
+            "type": "string",
+            "description": "回复文案（可留空）"
+          },
+          "prompt": {
+            "type": "string",
+            "description": "AI 要求（可选）"
+          },
+          "probability": {
+            "type": "string",
+            "description": "回复概率：整数按百分比理解（1 表示 1%）；小数 0~1 按比例（0.8 = 80%）；也支持 80% 写法"
+          }
         }
       }
     }
@@ -105,45 +136,82 @@
   "admin_whitelist": {
     "description": "管理员白名单（用于“欢迎”命令）",
     "type": "string",
-    "default": ""
+    "default": "",
+    "hint": "逗号或换行分隔的用户号/群号。\n留空时禁用“欢迎”命令。"
   },
   "cooldown_seconds": {
     "description": "唤醒词冷却时间（秒）",
     "type": "int",
     "default": 3,
-    "slider": { "min": 0, "max": 60, "step": 1 }
+    "slider": { "min": 0, "max": 60, "step": 1 },
+    "hint": "同一个会话内两次唤醒词回复之间的最短间隔。0 表示不冷却。\n注意：只有回复真正发送成功才会消耗冷却。"
   },
   "freq_window_seconds": {
     "description": "频率统计窗口（秒）",
     "type": "int",
     "default": 60,
-    "slider": { "min": 10, "max": 600, "step": 10 }
+    "slider": { "min": 10, "max": 600, "step": 10 },
+    "hint": "统计每个关键词在这个时间窗口内被触发多少次，作为“频率信息”告诉 AI。\n命中即记录，包括之后被概率或冷却跳过的触发。"
+  },
+  "max_triggers_per_window": {
+    "description": "唤醒词窗口内最大触发次数",
+    "type": "int",
+    "default": 0,
+    "slider": { "min": 0, "max": 50, "step": 1 },
+    "hint": "同一个关键词在频率窗口内触发超过该次数后，插件自动闭嘴防刷屏。\n例如 5 表示：60 秒内第 6 次触发就不再回复。\n0 表示不限制（只把次数告诉 AI，不拦截）。"
+  },
+  "reply_delay_min": {
+    "description": "回复随机延迟下限（秒）",
+    "type": "float",
+    "default": 0.5,
+    "slider": { "min": 0.0, "max": 5.0, "step": 0.1 },
+    "hint": "发送前随机等待，模拟人类打字节奏，避免被风控识别。\n想立刻回复就都设为 0。"
+  },
+  "reply_delay_max": {
+    "description": "回复随机延迟上限（秒）",
+    "type": "float",
+    "default": 1.5,
+    "slider": { "min": 0.0, "max": 10.0, "step": 0.1 }
+  },
+  "send_min_interval": {
+    "description": "最小发送间隔（秒）",
+    "type": "float",
+    "default": 0.5,
+    "slider": { "min": 0.0, "max": 10.0, "step": 0.1 },
+    "hint": "全局和单个会话都遵守这个最短间隔，防止连发多条被风控。"
+  },
+  "max_replies_per_minute": {
+    "description": "每个会话每分钟回复上限",
+    "type": "int",
+    "default": 10,
+    "slider": { "min": 0, "max": 60, "step": 1 },
+    "hint": "同一会话 60 秒内插件最多回复这么多条，超过就跳过。\n正常聊天几乎不会触达上限。0 表示不限制。"
   },
   "enable_idle_chat": {
     "description": "启用主动发言",
     "type": "bool",
     "default": false,
-    "hint": "开启后，如果机器人自己很久没在某个会话里说过话，它会主动冒个泡。\n注意：只对机器人“见过”的会话生效（也就是收到过消息的会话）。"
+    "hint": "改动即时生效，无需重启 AstrBot。"
   },
   "idle_seconds": {
     "description": "机器人沉默多久后主动发言（秒）",
     "type": "int",
     "default": 1800,
-    "slider": { "min": 60, "max": 7200, "step": 60 },
-    "hint": "默认 1800 秒 = 30 分钟。\n只要机器人自己在这段时间内没发过言，就会主动说一句。哪怕群里很热闹也一样。"
+    "slider": { "min": 60, "max": 7200, "step": 60 }
   },
   "idle_check_interval": {
     "description": "检查间隔（秒）",
     "type": "int",
     "default": 60,
-    "slider": { "min": 10, "max": 600, "step": 10 }
+    "slider": { "min": 10, "max": 600, "step": 10 },
+    "hint": "后台多久检查一次沉默状态。\n实际间隔会在该值上下随机浮动 20%，避免固定节奏被识别成机器人。"
   },
   "idle_cooldown_seconds": {
     "description": "两次主动发言最短间隔（秒）",
     "type": "int",
     "default": 3600,
     "slider": { "min": 300, "max": 86400, "step": 300 },
-    "hint": "默认 3600 秒 = 1 小时。"
+    "hint": "同一个会话两次主动发言之间的最短间隔。\n例如设为 3600 表示：即使沉默很久，最多每小时主动说一次。\n0 表示不限制（只要沉默够久就发）。"
   },
   "idle_prompt": {
     "description": "主动发言的提示词",
@@ -154,5 +222,11 @@
     "description": "只在群聊主动发言（私聊不主动）",
     "type": "bool",
     "default": true
+  },
+  "quiet_hours": {
+    "description": "夜间静默时段",
+    "type": "string",
+    "default": "",
+    "hint": "例如 23:30-07:00。该时段内机器人不自动发言：欢迎、唤醒词、主动发言、聊天模式全部静默。\n跨天时段合法（23:30-07:00）。\n管理员手动执行“欢迎”命令不受影响。\n留空表示不静默。"
   }
 }

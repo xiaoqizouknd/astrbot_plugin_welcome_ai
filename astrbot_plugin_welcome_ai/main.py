@@ -21,6 +21,7 @@ import asyncio
 import inspect
 import json
 import random
+import re
 import time
 from collections import deque
 from dataclasses import dataclass
@@ -78,6 +79,11 @@ _API_RETRIES = 2
 _PROMPT_CONTEXT_LIMIT = 200
 # 合并欢迎一次最多带的人数
 _WELCOME_NAME_LIMIT = 20
+# 输出清洗时追加的格式要求
+_FORMAT_HINT = (
+    "【格式要求】直接输出自然的口语回复：不要用多余的空格、空行或分隔线凑格式，"
+    "不要复述要求。"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -237,6 +243,48 @@ def _to_float(value: object, default: float, *, minimum: float = 0.0) -> float:
 
 
 # ----------------------------------------------------------------------
+# 输出清洗：去掉 AI 回复里多余的空格 / 空行
+# ----------------------------------------------------------------------
+_ZERO_WIDTH_RE = re.compile(r"[\u200b\u200c\u200d\u2060\ufeff]")
+# CJK 文字与标点（含全角标点、日文假名、韩文、全角字符）
+_CJK_RANGE = (
+    r"\u3000-\u303f\u3040-\u30ff\u3400-\u4dbf"
+    r"\u4e00-\u9fff\uac00-\ud7af\uff00-\uffef"
+)
+# 中文之间、中文与中文标点之间的空格直接删掉
+_CJK_EDGE_SPACE_RE = re.compile(
+    rf"(?<=[{_CJK_RANGE}，。！？；：、,.!?;:])[ \t\u3000]+(?=[{_CJK_RANGE}])"
+)
+_MULTI_SPACE_RE = re.compile(r"[ \t\u3000]+")
+_MULTI_NEWLINE_RE = re.compile(r"\n{2,}")
+
+
+def _clean_reply_text(text: str, mode: str = "normal") -> str:
+    """清理 AI 输出里多余的空格 / 空行，让语气更自然。
+
+    mode:
+        off         原样返回
+        normal      删掉中文之间的空格，连续空白压成一个，连续空行压成单换行
+        single_line 在 normal 基础上把换行换成空格，输出单行聊天体
+    """
+    if not text or mode == "off":
+        return text
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = _ZERO_WIDTH_RE.sub("", text)
+    # 中文之间、中文与中文标点之间的空格直接删掉
+    text = _CJK_EDGE_SPACE_RE.sub("", text)
+    # 行内连续空白压成一个空格
+    text = _MULTI_SPACE_RE.sub(" ", text)
+    # 去掉每行首尾空白，连续空行压成一个换行
+    text = "\n".join(line.strip() for line in text.split("\n"))
+    text = _MULTI_NEWLINE_RE.sub("\n", text)
+    if mode == "single_line":
+        text = re.sub(r"\s*\n\s*", " ", text)
+        text = re.sub(r" {2,}", " ", text)
+    return text.strip()
+
+
+# ----------------------------------------------------------------------
 # 插件主体
 # ----------------------------------------------------------------------
 class WelcomeAIPlugin(Star):
@@ -345,6 +393,13 @@ class WelcomeAIPlugin(Star):
             self.reply_delay_max = self.reply_delay_min
         self.send_min_interval = _to_float(cfg.get("send_min_interval"), 0.5)
         self.max_replies_per_minute = _to_int(cfg.get("max_replies_per_minute"), 10)
+
+        # 输出清洗：去掉 AI 回复里多余的空格 / 空行
+        self.output_clean_mode = str(
+            cfg.get("output_clean_mode") or "normal"
+        ).strip()
+        if self.output_clean_mode not in ("off", "normal", "single_line"):
+            self.output_clean_mode = "normal"
 
         # 唤醒词：解析后按长度倒序建索引，匹配时只遍历不排序
         rules = _parse_wake_words(cfg.get("wake_words"))
@@ -500,6 +555,26 @@ class WelcomeAIPlugin(Star):
             await self._handle_message(event)
         except Exception:
             logger.exception("welcome-ai 处理消息失败")
+
+    if hasattr(filter, "on_llm_response"):
+
+        @filter.on_llm_response()
+        async def on_llm_response_clean(self, *args, **kwargs):
+            """核心 LLM 回复发出前清洗空格 / 空行（仅新版 AstrBot 支持）。"""
+            try:
+                resp = kwargs.get("resp")
+                if resp is None and args:
+                    resp = args[-1]
+                text = getattr(resp, "completion_text", None)
+                if not isinstance(text, str) or not text:
+                    return
+                if self.output_clean_mode == "off":
+                    return
+                cleaned = _clean_reply_text(text, self.output_clean_mode)
+                if cleaned != text:
+                    resp.completion_text = cleaned
+            except Exception:
+                logger.exception("welcome-ai 清理核心 LLM 回复失败")
 
     def _maybe_cleanup(self) -> None:
         # 挂在这里而不是 _idle_tick，是为了在 enable_idle_chat=False 时也能清理
@@ -1164,15 +1239,21 @@ class WelcomeAIPlugin(Star):
     # AI：统一入口
     # ------------------------------------------------------------------
     async def _ask_ai(self, session_id: str, prompt: str) -> str:
-        # 1) 告诉 AI 遵守长度
+        # 1) 告诉 AI 遵守长度，并别乱加空格 / 空行
         prompt_with_hint = self._with_length_hint(prompt)
+        if self.output_clean_mode != "off":
+            prompt_with_hint = f"{prompt_with_hint}\n\n{_FORMAT_HINT}"
 
         if self.backend == _BACKEND_PROVIDER:
             text = await self._ask_via_provider(session_id, prompt_with_hint)
         else:
             text = await self._ask_via_direct_api(prompt_with_hint)
 
-        # 2) 兜底截断
+        # 2) 清洗多余空格 / 空行
+        if text:
+            text = _clean_reply_text(text, self.output_clean_mode)
+
+        # 3) 兜底截断
         return self._enforce_length(text) if text else text
 
     # ------------------------------------------------------------------

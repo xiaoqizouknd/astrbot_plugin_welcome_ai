@@ -2,7 +2,7 @@ name: astrbot_plugin_welcome_ai
 display_name: 欢迎与唤醒词AI
 desc: 自动生成贴合人格的欢迎新成员文案；支持自定义唤醒词，回复由 AI 微调。
 short_desc: 新人欢迎 + 唤醒词 AI 微调。
-version: 1.1.0
+version: 1.1.1
 astrbot_version: ">=4.26,<5"
 author: 57Darling02
 repo: https://github.com/57Darling02/astrbot_plugin_welcome_ai
@@ -17,6 +17,7 @@ readme: |
   - 主动发言：机器人沉默太久时主动说话
   - 聊天模式：只响应唤醒词 / 任何消息都回复
   - 输出长度限制：AI 回复不会超长刷屏
+  - 输出格式清理：自动去掉回复里多余的空格 / 空行
   - 防风控：随机回复延迟、发送间隔、每分钟上限、AI 文案去重、夜间静默
   - 支持直连 API（失败自动重试）或复用 AstrBot provider
 

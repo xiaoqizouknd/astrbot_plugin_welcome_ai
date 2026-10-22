@@ -187,6 +187,18 @@
     "slider": { "min": 0, "max": 60, "step": 1 },
     "hint": "同一会话 60 秒内插件最多回复这么多条，超过就跳过。\n正常聊天几乎不会触达上限。0 表示不限制。"
   },
+  "output_clean_mode": {
+    "description": "AI 输出清洗（去掉多余空格 / 空行）",
+    "type": "string",
+    "default": "normal",
+    "options": ["off", "normal", "single_line"],
+    "labels": [
+      "关闭（原样输出）",
+      "常规清理（推荐，删空格、压空行）",
+      "单行聊天体（换行也压成空格）"
+    ],
+    "hint": "模型偶尔会输出“加空格、加空行”的排版，读起来不自然。\n插件会在发送前清理：中文之间的空格直接删掉，连续空格压成一个，连续空行压成单换行。\n选“单行聊天体”则会连换行也压成空格，输出一整句。\n该清洗同样作用于核心 LLM 的回复（需要 AstrBot 版本支持 on_llm_response 钩子）。"
+  },
   "enable_idle_chat": {
     "description": "启用主动发言",
     "type": "bool",
